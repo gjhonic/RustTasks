@@ -26,7 +26,8 @@ let app = new Vue({
             fetch(this.url_get_tasks, {
                 method: "GET",
             }).then(response => response.json()).then(data => {
-                console.log(this.data);
+                this.tasksData = data;
+                console.log(data);
 
                 if (typeof callback !== 'undefined') {
                     let timerId = setTimeout(function () {

@@ -1,9 +1,16 @@
 use actix_files::NamedFile;
 use actix_web::{
-    dev, error, middleware::ErrorHandlerResponse, web, Error, HttpResponse, Result,
+    dev, error, middleware::ErrorHandlerResponse, web, Error, HttpResponse, Result, Responder
 };
+use serde::{Serialize};
 use std::fs::File;
 use std::io::prelude::*;
+
+#[derive(Serialize)]
+pub struct Task {
+    id: u64,
+    name: String
+}
 
 pub async fn index() -> Result<HttpResponse, Error> {
     let mut file = File::open("templates/index.html")?;
@@ -13,8 +20,11 @@ pub async fn index() -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok().content_type("text/html").body(contents))
 }
 
-pub async fn get_tasks() -> Result<HttpResponse, Error> {
-    Ok(HttpResponse::Ok().content_type("application/json").body("{{title: 'Проснуться'},{title: 'Лечь спать'}}"))
+pub async fn get_tasks() -> Result<impl Responder> {
+    let mut tasks:Vec<Task> = Vec::new();
+    tasks.push(Task{id: 1, name: "Проснуться".to_string()});
+    tasks.push(Task{id: 2, name: "Лечь спать".to_string()});
+    Ok(web::Json(tasks))
 }
 
 pub fn bad_request<B>(res: dev::ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {

@@ -36,6 +36,27 @@
             <button class="btn btn-success">Create task</button>
             <button class="btn btn-success">Create branch</button>
         </p>
+
+        <table id="table_tasks" class="table table-hover table-bordered">
+            <thead class="table-dark">
+            <tr>
+                <th>№</th>
+                <th>Name</th>
+            </tr>
+            </thead>
+            <tbody>
+            <template v-for="(itemTask, idTask) in Tasks">
+                <tr>
+                    <td>
+                        {{ itemTask.id }}
+                    </td>
+                    <td>
+                        {{ itemTask.name }}
+                    </td>
+                </tr>
+            </template>
+            </tbody>
+        </table>
         
         <footer class="pt-3 mt-4 text-muted border-top">
             &copy; {{ config.author }}
