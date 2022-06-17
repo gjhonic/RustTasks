@@ -9,8 +9,8 @@ use actix_web::{
 };
 use dotenv::dotenv;
 
-//use std::error::Error;
 
+mod entitys;
 mod api;
 
 static SESSION_SIGNING_KEY: &[u8] = &[0; 32];
@@ -39,6 +39,7 @@ async fn main() -> io::Result<()> {
             .wrap(Logger::default())
             .wrap(session_store)
             .wrap(error_handlers)
+            .service(web::resource("/get-data").route(web::get().to(api::get_data)))
             .service(web::resource("/get-tasks").route(web::get().to(api::get_tasks)))
             .service(web::resource("/index").route(web::get().to(api::index)))
             .service(web::resource("/").route(web::get().to(api::index)))
