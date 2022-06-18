@@ -2,23 +2,21 @@ use serde::{Serialize};
 
 #[derive(Serialize)]
 pub struct Task {
-    pub id: u64,
+    pub id: i32,
     pub name: String,
-    pub status: u64
+    pub status: i32
 }
 
-// Ответ по API getTask
 #[derive(Serialize)]
 pub struct ResponseTaskJson {
-    status: bool,
-    message: String,
-    task: Task
+    pub status: String,
+    pub message: String,
+    pub task: Task
 }
 
-// Ответ по API getTasks
 #[derive(Serialize)]
 pub struct ResponseTasksJson {
-    status: bool,
-    message: String,
-    tasks: Vec<Task>
+    pub status: String,
+    pub message: String,
+    pub tasks: Vec<Task>
 }

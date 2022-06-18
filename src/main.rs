@@ -8,8 +8,7 @@ use actix_web::{
     web, App, HttpServer,
 };
 use dotenv::dotenv;
-
-
+use postgres::{Client, Error, NoTls};
 mod entitys;
 mod api;
 
@@ -40,6 +39,7 @@ async fn main() -> io::Result<()> {
             .wrap(session_store)
             .wrap(error_handlers)
             .service(web::resource("/get-data").route(web::get().to(api::get_data)))
+            //.service(web::resource("/add-task").route(web::get().to(api::add_task)))
             .service(web::resource("/get-tasks").route(web::get().to(api::get_tasks)))
             .service(web::resource("/index").route(web::get().to(api::index)))
             .service(web::resource("/").route(web::get().to(api::index)))

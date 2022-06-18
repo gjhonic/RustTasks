@@ -14,7 +14,7 @@ cook:
     cp .env.sample .env
 
 #Запускает cargo run
-lup:
+bum:
     @echo 'Start local run project'
     cargo run
 

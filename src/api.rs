@@ -1,17 +1,21 @@
+extern crate postgres;
+
 use actix_files::NamedFile;
 use postgres::{Client, Error, NoTls};
 use actix_web::{
-    dev, error, middleware::ErrorHandlerResponse, web, Error, HttpResponse, Result, Responder
+    dev, error, middleware::ErrorHandlerResponse, web, Error as ActixError, HttpResponse, Result, Responder
 };
 use serde::{Serialize};
 use std::fs::File;
 use std::env;
 use std::io::prelude::*;
 
-use crate::entitys::Task;
+const CONN : &str = "postgresql://postgres@localhost:5432/rusttasks"; //&env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+use crate::entitys::{Task, ResponseTasksJson};
 
 //Возвращает главную страницу
-pub async fn index() -> Result<HttpResponse, Error> {
+pub async fn index() -> Result<HttpResponse, ActixError> {
     let mut file = File::open("static/pages/index.html")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -19,7 +23,7 @@ pub async fn index() -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok().content_type("text/html").body(contents))
 }
 
-//Возвращает задачи
+//Возвращает задачи (Заглушка)
 pub async fn get_tasks() -> Result<impl Responder> {
 
     let mut tasks:Vec<Task> = Vec::new();
@@ -29,24 +33,55 @@ pub async fn get_tasks() -> Result<impl Responder> {
     Ok(web::Json(tasks))
 }
 
-pub async fn get_data() -> Result<impl Responder, postgres::Error> {
+//Возвращает список задач
+pub async fn get_data() -> Result<impl Responder, ActixError> {
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    let mut client = Client::connect(
-        "postgresql://postgres@localhost:5432/rusttasks",
+    let client = Client::connect(
+        CONN,
         NoTls,
-    )?;
+    );
 
     let mut tasks:Vec<Task> = Vec::new();
 
-    for row in client.query("SELECT * FROM tasks", &[])? {
-        tasks.push(Task{id: row.get(0).parse::<u64>(), name: row.get(1), status: row.get(2).parse::<u64>()});
-    }
+    match client {
+        Ok(mut good_client) => 
+            for row in good_client.query("SELECT id, name, status FROM tasks", &[]).unwrap() {
+                let (task_id, task_name, task_status) = (row.get(0), row.get(1), row.get(2));
 
-    Ok(web::Json(tasks))
+                tasks.push(Task{id: task_id, name: task_name, status: task_status});
+            },
+        Err(e) => {
+            return Ok(web::Json("{'status': 'error'}"));
+        }, 
+    };
+
+    let responseTasksJson = ResponseTasksJson {
+        status: "Ok".to_string(),
+        message: "Success".to_string(),
+        tasks: tasks
+    };
+
+    Ok(web::Json(responseTasksJson))
 }
 
+//Добавляет задачу
+// pub async fn add_task() -> Result<impl Responder, Error> {
+
+//     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+//     let mut client = Client::connect(
+//         "postgresql://postgres@localhost:5432/rusttasks",
+//         NoTls,
+//     )?;
+
+//     let mut tasks:Vec<Task> = Vec::new();
+
+//     for row in client.query("SELECT * FROM tasks", &[])? {
+//         tasks.push(Task{id: row.get(0).parse::<u64>(), name: row.get(1), status: row.get(2).parse::<u64>()});
+//     }
+
+//     Ok(web::Json(tasks))
+// }
 
 
 
