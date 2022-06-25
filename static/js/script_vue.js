@@ -36,23 +36,8 @@ let app = new Vue({
                 }
             });
         },
-        loadData(callback) {
-            fetch('/get-data', {
-                method: "GET",
-            }).then(response => response.json()).then(data => {
-                this.tasksData = data;
-                console.log(data);
-
-                if (typeof callback !== 'undefined') {
-                    let timerId = setTimeout(function () {
-                        callback();
-                    }, 500);
-                }
-            });
-        },
     },
     mounted() {
         this.loadTasks();
-        this.loadData();
     },
 });

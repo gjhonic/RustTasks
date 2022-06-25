@@ -22,6 +22,10 @@ bum:
 up:
     sudo docker-compose up
 
+#Собирает и запускает докер в демоне
+upd:
+    sudo docker-compose up -d
+
 #Делает тестовый запрос на сервер
 test-curl:
     curl -v http://127.0.0.1:3030/test

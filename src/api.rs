@@ -1,7 +1,7 @@
 extern crate postgres;
-
+use std::{io};
+use postgres::{Client, NoTls, Error};
 use actix_files::NamedFile;
-use postgres::{Client, Error, NoTls};
 use actix_web::{
     dev, error, middleware::ErrorHandlerResponse, web, Error as ActixError, HttpResponse, Result, Responder
 };
@@ -24,27 +24,18 @@ pub async fn index() -> Result<HttpResponse, ActixError> {
 //Возвращает задачи
 pub async fn get_tasks() -> Result<impl Responder, ActixError> {
 
-    let client = Client::connect(
-        "postgresql://pgpwd4habr:rustuser@localhost:5432/rustdb",
+    let mut client = Client::connect(
+        "postgresql://rustuser:pgpwd4habr@localhost:5432/rustdb",
         NoTls,
-    );
+    ).map_err(|_| io::Error::new(io::ErrorKind::Other, "can't connect to DB"))?;
 
     let mut dataTasks:Vec<Task> = Vec::new();
 
-    match client {
-        Ok(mut good_client) => 
-            for row in good_client.query("SELECT id, name, status FROM tasks", &[]).unwrap() {
-                let (task_id, task_name, task_status) = (row.get(0), row.get(1), row.get(2));
+    for row in client.query("SELECT id, name, status FROM tasks", &[]).unwrap() {
+        let (task_id, task_name, task_status) = (row.get(0), row.get(1), row.get(2));
 
-                dataTasks.push(Task{id: task_id, name: task_name, status: task_status});
-            },
-        Err(e) => {
-            return Ok(web::Json(ResponseGetTasks {
-                message: "Error".to_string(),
-                tasks: dataTasks
-            }));
-        }, 
-    };
+        dataTasks.push(Task{id: task_id, name: task_name, status: task_status});
+    }
     
     Ok(web::Json(ResponseGetTasks {
         message: "Success".to_string(),
