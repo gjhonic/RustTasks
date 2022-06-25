@@ -8,11 +8,9 @@ use actix_web::{
 use serde::{Serialize};
 use std::fs::File;
 use std::env;
-use std::io::prelude::*;
+use std::io::prelude::*; 
 
-const CONN : &str = "postgresql://postgres@localhost:5432/rusttasks"; //&env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-use crate::entitys::{Task, ResponseTasksJson};
+use crate::entitys::{Task, ResponseGetTasks};
 
 //Возвращает главную страницу
 pub async fn index() -> Result<HttpResponse, ActixError> {
@@ -23,67 +21,60 @@ pub async fn index() -> Result<HttpResponse, ActixError> {
     Ok(HttpResponse::Ok().content_type("text/html").body(contents))
 }
 
-//Возвращает задачи (Заглушка)
-pub async fn get_tasks() -> Result<impl Responder> {
-
-    let mut tasks:Vec<Task> = Vec::new();
-    tasks.push(Task{id: 1, name: "Проснуться".to_string(), status: 1});
-    tasks.push(Task{id: 2, name: "Лечь спать".to_string(), status: 1});
-
-    Ok(web::Json(tasks))
-}
-
-//Возвращает список задач
-pub async fn get_data() -> Result<impl Responder, ActixError> {
+//Возвращает задачи
+pub async fn get_tasks() -> Result<impl Responder, ActixError> {
 
     let client = Client::connect(
-        CONN,
+        "postgresql://pgpwd4habr:rustuser@localhost:5432/rustdb",
         NoTls,
     );
 
-    let mut tasks:Vec<Task> = Vec::new();
+    let mut dataTasks:Vec<Task> = Vec::new();
 
     match client {
         Ok(mut good_client) => 
             for row in good_client.query("SELECT id, name, status FROM tasks", &[]).unwrap() {
                 let (task_id, task_name, task_status) = (row.get(0), row.get(1), row.get(2));
 
-                tasks.push(Task{id: task_id, name: task_name, status: task_status});
+                dataTasks.push(Task{id: task_id, name: task_name, status: task_status});
             },
         Err(e) => {
-            return Ok(web::Json("{'status': 'error'}"));
+            return Ok(web::Json(ResponseGetTasks {
+                message: "Error".to_string(),
+                tasks: dataTasks
+            }));
         }, 
     };
-
-    let responseTasksJson = ResponseTasksJson {
-        status: "Ok".to_string(),
+    
+    Ok(web::Json(ResponseGetTasks {
         message: "Success".to_string(),
-        tasks: tasks
-    };
+        tasks: dataTasks
+    }))
 
-    Ok(web::Json(responseTasksJson))
+    //Заглушка
+    // let mut tasks:Vec<Task> = Vec::new();
+    // tasks.push(Task{id: 1, name: "Проснуться".to_string(), status: 1});
+    // tasks.push(Task{id: 2, name: "Лечь спать".to_string(), status: 1});
+    //Ok(web::Json(tasks))
 }
 
 //Добавляет задачу
-// pub async fn add_task() -> Result<impl Responder, Error> {
+pub async fn add_task() -> Result<impl Responder, Error> {
 
-//     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-//     let mut client = Client::connect(
-//         "postgresql://postgres@localhost:5432/rusttasks",
-//         NoTls,
-//     )?;
+    let mut client = Client::connect(
+        "postgresql://postgres@localhost:5432/rusttasks",
+        NoTls,
+    )?;
 
-//     let mut tasks:Vec<Task> = Vec::new();
+    client.execute(
+        "INSERT INTO app_user (username, password, email) VALUES ($1, $2, $3)",
+        &[&"user1", &"mypass", &"user@test.com"],
+    )?;
 
-//     for row in client.query("SELECT * FROM tasks", &[])? {
-//         tasks.push(Task{id: row.get(0).parse::<u64>(), name: row.get(1), status: row.get(2).parse::<u64>()});
-//     }
-
-//     Ok(web::Json(tasks))
-// }
-
-
+    Ok(HttpResponse::Ok().body("Success create!"))
+}
 
 //Методы ошибок
 pub fn bad_request<B>(res: dev::ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {

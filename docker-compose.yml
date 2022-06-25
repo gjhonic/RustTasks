@@ -4,3 +4,13 @@ services:
     build: .
     ports:
       - "3030:3030"
+  postgres:
+    image: postgres:13.3
+    environment:
+      POSTGRES_DB: "rustdb"
+      POSTGRES_USER: "rustuser"
+      POSTGRES_PASSWORD: "pgpwd4habr"
+    volumes:
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+    ports:
+      - "5432:5432"

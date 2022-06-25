@@ -8,15 +8,7 @@ pub struct Task {
 }
 
 #[derive(Serialize)]
-pub struct ResponseTaskJson {
-    pub status: String,
-    pub message: String,
-    pub task: Task
-}
-
-#[derive(Serialize)]
-pub struct ResponseTasksJson {
-    pub status: String,
+pub struct ResponseGetTasks {
     pub message: String,
     pub tasks: Vec<Task>
 }
