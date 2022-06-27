@@ -1,93 +1,58 @@
-extern crate postgres;
-use std::{io};
-use postgres::{Client, NoTls, Error};
-use actix_files::NamedFile;
-use actix_web::{
-    dev, error, middleware::ErrorHandlerResponse, web, Error as ActixError, HttpResponse, Result, Responder
-};
-use serde::{Serialize};
-use std::fs::File;
-use std::env;
-use std::io::prelude::*; 
+use tokio_postgres::error::Error;
+use warp::{reject};
+use bb8::Pool;
+use tokio_postgres::NoTls;
+use bb8_postgres::PostgresConnectionManager;
 
-use crate::entitys::{Task, ResponseGetTasks};
+type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
-//Возвращает главную страницу
-pub async fn index() -> Result<HttpResponse, ActixError> {
-    let mut file = File::open("static/pages/index.html")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+#[derive(Debug)]
+struct ConnError;
 
-    Ok(HttpResponse::Ok().content_type("text/html").body(contents))
-}
+impl reject::Reject for ConnError {}
 
-//Возвращает задачи
-pub async fn get_tasks() -> Result<impl Responder, ActixError> {
+#[derive(Debug)]
+struct DataError;
 
-    let mut client = Client::connect(
-        "postgresql://rustuser:pgpwd4habr@localhost:5432/rustdb",
-        NoTls,
-    ).map_err(|_| io::Error::new(io::ErrorKind::Other, "can't connect to DB"))?;
+impl reject::Reject for DataError {}
 
-    let mut dataTasks:Vec<Task> = Vec::new();
+//Возвращает Таски
+pub async fn get_tasks(pool: ConnectionPool) -> Result<impl warp::Reply, warp::Rejection> {
+    let conn = pool.get().await.map_err(|_| reject::custom(ConnError))?;
 
-    for row in client.query("SELECT id, name, status FROM tasks", &[]).unwrap() {
-        let (task_id, task_name, task_status) = (row.get(0), row.get(1), row.get(2));
+    let mut res = String::from("");
 
-        dataTasks.push(Task{id: task_id, name: task_name, status: task_status});
+    for row in conn
+        .query("SELECT id, name, status FROM tasks", &[])
+        .await
+        .map_err(|_| reject::custom(ConnError))?
+    {
+        let (task_id, task_name, task_status): (
+            Result<i32, Error>,
+            Result<String, Error>,
+            Result<i32, Error>,
+        ) = (row.try_get(0), row.try_get(1), row.try_get(2));
+
+        res.push_str(&format!(
+            " | {} | {} | {} |\n",
+            task_id.map_err(|_| reject::custom(DataError))?,
+            task_name.map_err(|_| reject::custom(DataError))?,
+            task_status.map_err(|_| reject::custom(DataError))?
+        ));
     }
-    
-    Ok(web::Json(ResponseGetTasks {
-        message: "Success".to_string(),
-        tasks: dataTasks
-    }))
 
-    //Заглушка
-    // let mut tasks:Vec<Task> = Vec::new();
-    // tasks.push(Task{id: 1, name: "Проснуться".to_string(), status: 1});
-    // tasks.push(Task{id: 2, name: "Лечь спать".to_string(), status: 1});
-    //Ok(web::Json(tasks))
+    Ok(res)
 }
 
-//Добавляет задачу
-pub async fn add_task() -> Result<impl Responder, Error> {
+//Добавляет таск
+pub async fn add_task(
+    pool: ConnectionPool,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // let conn = pool.get().await.map_err(|_| reject::custom(ConnError))?;
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // conn.execute("INSERT INTO log (log_text) VALUES ($1)", &[&path.as_str()])
+    //     .await
+    //     .map_err(|_| reject::custom(ConnError))?;
 
-    let mut client = Client::connect(
-        "postgresql://postgres@localhost:5432/rusttasks",
-        NoTls,
-    )?;
-
-    client.execute(
-        "INSERT INTO app_user (username, password, email) VALUES ($1, $2, $3)",
-        &[&"user1", &"mypass", &"user@test.com"],
-    )?;
-
-    Ok(HttpResponse::Ok().body("Success create!"))
-}
-
-//Методы ошибок
-pub fn bad_request<B>(res: dev::ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
-    let new_resp = NamedFile::open("static/errors/400.html")?
-        .set_status_code(res.status())
-        .into_response(res.request())
-        .map_into_right_body();
-    Ok(ErrorHandlerResponse::Response(res.into_response(new_resp)))
-}
-
-pub fn not_found<B>(res: dev::ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
-    let new_resp = NamedFile::open("static/errors/404.html")?
-        .set_status_code(res.status())
-        .into_response(res.request())
-        .map_into_right_body();
-    Ok(ErrorHandlerResponse::Response(res.into_response(new_resp)))
-}
-
-pub fn internal_server_error<B>(res: dev::ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
-    let new_resp = NamedFile::open("static/errors/500.html")?
-        .set_status_code(res.status())
-        .into_response(res.request())
-        .map_into_right_body();
-    Ok(ErrorHandlerResponse::Response(res.into_response(new_resp)))
+    return Ok(format!("Log was added."));
 }

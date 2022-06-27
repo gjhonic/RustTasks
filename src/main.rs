@@ -1,51 +1,48 @@
-use std::{io};
-
-use actix_files::Files;
-use actix_session::CookieSession;
-use actix_web::{
-    http,
-    middleware::{ErrorHandlers, Logger},
-    web, App, HttpServer,
-};
-use dotenv::dotenv;
-use postgres::{Client, Error, NoTls};
-mod entitys;
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
+use tokio_postgres::NoTls;
+use warp::{Filter};
 mod api;
+use std::env;
 
-static SESSION_SIGNING_KEY: &[u8] = &[0; 32];
+type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
-#[actix_web::main]
-async fn main() -> io::Result<()> {
-    dotenv().ok();
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+const CONN: &str = "postgresql://rustuser:pgpwd4habr@postgres:5432/rustdb";
 
-    log::info!("starting HTTP server at http://0.0.0.0:3030");
+fn with_pool(
+    pool: ConnectionPool,
+) -> impl Filter<Extract = (ConnectionPool,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || pool.clone())
+}
 
-    HttpServer::new(move || {
-        log::debug!("Constructing the App");
+#[tokio::main]
+async fn main() {
 
-        let session_store = CookieSession::signed(SESSION_SIGNING_KEY).secure(false);
+    env::set_var("RUST_BACKTRACE", "1");
 
-        let error_handlers = ErrorHandlers::new()
-            .handler(
-                 http::StatusCode::INTERNAL_SERVER_ERROR,
-                 api::internal_server_error,
-             )
-            .handler(http::StatusCode::BAD_REQUEST, api::bad_request)
-            .handler(http::StatusCode::NOT_FOUND, api::not_found);
+    let manager = PostgresConnectionManager::new_from_stringlike(CONN, NoTls).unwrap();
+    let pool = Pool::builder().build(manager).await.unwrap();
 
-        App::new()
-            .wrap(Logger::default())
-            .wrap(session_store)
-            .wrap(error_handlers)
-            //.service(web::resource("/add-task").route(web::get().to(api::add_task)))
-            .service(web::resource("/get-tasks").route(web::get().to(api::get_tasks)))
-            .service(web::resource("/index").route(web::get().to(api::index)))
-            .service(web::resource("/").route(web::get().to(api::index)))
-            .service(Files::new("/static", "./static"))
-    })
-    .bind(("0.0.0.0", 3030))?
-    .workers(2)
-    .run()
-    .await
+    let route_index = warp::path!("index")
+        .and(warp::fs::file("static/pages/index.html"));
+
+    let route_index_empty = warp::path::end()
+        .and(warp::fs::file("static/pages/index.html")); 
+
+    let route_get_tasks = warp::path!("get-tasks")
+        .and(with_pool(pool.clone()))
+        .and_then(api::get_tasks);
+
+    let route_create_task = warp::path!("add-task")
+        .and(with_pool(pool))
+        .and_then(api::add_task);
+
+    let routes = route_index
+        .or(route_index_empty)
+        .or(route_get_tasks)
+        .or(route_create_task);
+
+    println!("Server success started: 0.0.0.0:3030");
+
+    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }

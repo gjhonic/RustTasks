@@ -1,6 +1,6 @@
-CREATE TABLE tasks
+CREATE TABLE IF NOT EXISTS tasks
 (
     Id SERIAL PRIMARY KEY,
-    name CHARACTER VARYING(30),
+    name VARCHAR(255),
     status INTEGER
 );
