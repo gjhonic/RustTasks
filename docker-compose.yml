@@ -1,26 +1,22 @@
 version: "3"
 
 services:
-  
-  db:
-    image: postgres:13.3
-    environment:
-      POSTGRES_DB: "rustdb"
-      POSTGRES_USER: "rustuser"
-      POSTGRES_PASSWORD: "pgpwd4habr"
-    volumes:
-      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
-    ports:
-      - "5432:5432"
 
   web:
-    depends_on:
-      - db
     build: .
-    environment:
-      ROCKET_ENV: development
-      DATABASE_URL: "postgres://rustuser:pgpwd4habr@db/rustdb"
     volumes:
       - ./static:/usr/local/bin/static
     ports:
       - "3030:3030"
+
+  postgres:
+    image: postgres:13.3
+    restart: always
+    environment:
+      POSTGRES_DB: "rusttasks"
+      POSTGRES_USER: "rust"
+      POSTGRES_PASSWORD: "1111"
+    volumes:
+       - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+    ports:
+      - "5432:5432"

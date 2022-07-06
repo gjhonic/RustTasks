@@ -3,8 +3,8 @@ use warp::{reject};
 use bb8::Pool;
 use tokio_postgres::NoTls;
 use bb8_postgres::PostgresConnectionManager;
-
-type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
+use crate::{ConnectionPool};
+use crate::entitys::{Task, TaskRequest};
 
 #[derive(Debug)]
 struct ConnError;
@@ -18,6 +18,11 @@ impl reject::Reject for DataError {}
 
 //Возвращает Таски
 pub async fn get_tasks(pool: ConnectionPool) -> Result<impl warp::Reply, warp::Rejection> {
+
+    //Ok(format!("get tasks."))
+
+    println!("[*] Query get_tasks");
+
     let conn = pool.get().await.map_err(|_| reject::custom(ConnError))?;
 
     let mut res = String::from("");
@@ -34,7 +39,7 @@ pub async fn get_tasks(pool: ConnectionPool) -> Result<impl warp::Reply, warp::R
         ) = (row.try_get(0), row.try_get(1), row.try_get(2));
 
         res.push_str(&format!(
-            " | {} | {} | {} |\n",
+            "id: {} name: {} status: {} \n",
             task_id.map_err(|_| reject::custom(DataError))?,
             task_name.map_err(|_| reject::custom(DataError))?,
             task_status.map_err(|_| reject::custom(DataError))?
@@ -46,13 +51,19 @@ pub async fn get_tasks(pool: ConnectionPool) -> Result<impl warp::Reply, warp::R
 
 //Добавляет таск
 pub async fn add_task(
-    pool: ConnectionPool,
+    body: TaskRequest,
+    pool: ConnectionPool
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    // let conn = pool.get().await.map_err(|_| reject::custom(ConnError))?;
 
-    // conn.execute("INSERT INTO log (log_text) VALUES ($1)", &[&path.as_str()])
-    //     .await
-    //     .map_err(|_| reject::custom(ConnError))?;
+    println!("[*] Query add_task");
 
-    return Ok(format!("Log was added."));
+    let conn = pool.get().await.map_err(|_| reject::custom(ConnError))?;
+
+    let query = format!("INSERT INTO {} (name) VALUES ($1) RETURNING *", "tasks");
+    let row = conn
+            .query_one(query.as_str(), &[&body.name])
+            .await
+            .map_err(|_| reject::custom(ConnError))?;
+            
+    Ok(format!("task was added."))
 }

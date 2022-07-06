@@ -1,8 +1,13 @@
-use serde::{Serialize};
-use tokio_postgres::error::Error as TokioError;
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Serialize)]
-pub struct ResponseGetTasks {
-    pub message: String,
-    pub tasks: String
+#[derive(Deserialize)]
+pub struct Task {
+    pub id: i32,
+    pub name: String,
+    pub status: i32,
+}
+
+#[derive(Deserialize)]
+pub struct TaskRequest {
+    pub name: String,
 }
