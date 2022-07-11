@@ -26,6 +26,16 @@ up:
 upd:
     sudo docker-compose up -d
 
+#Запускает контайнер бд в демоне
+bd-upd:
+    sudo docker-compose up -d
+    sudo docker container kill rusttasks_web_1
+
+#Останавливает все контейнеры
+stop:
+    sudo docker-compose up -d
+    sudo docker container kill rusttasks_web_1
+
 #Делает тестовый запрос на сервер
 test-curl:
     curl -v http://127.0.0.1:3030/test
